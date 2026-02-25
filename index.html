@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>天穹 · 飞机大战</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" width="800" height="600"></canvas>
+
+    <div id="ui-overlay">
+      <div id="hud-frame">
+        <div class="hud-panel hud-score-panel">
+          <span class="hud-tag">SCORE</span>
+          <span id="score" class="hud-num">0000000</span>
+          <span class="hud-tag hud-best-tag">BEST</span>
+          <span id="best-score" class="hud-num">0000000</span>
+        </div>
+        <div class="hud-panel hud-power-panel">
+          <span class="hud-tag">POWER</span>
+          <div class="power-bars" id="power-bars">
+            <span class="power-cell on" data-lv="1"></span>
+            <span class="power-cell" data-lv="2"></span>
+            <span class="power-cell" data-lv="3"></span>
+            <span class="power-cell" data-lv="4"></span>
+          </div>
+        </div>
+        <div class="hud-panel hud-lives-panel">
+          <span class="hud-tag">LIVES</span>
+          <div id="lives" class="lives"></div>
+        </div>
+        <div class="hud-panel hud-stage-panel">
+          <span class="hud-tag">STAGE</span>
+          <span id="level" class="hud-num">1</span>
+        </div>
+        <div class="hud-panel hud-skill-panel">
+          <span class="hud-tag">SPECIAL</span>
+          <div class="skill-row">
+            <span class="skill-cell" id="skill-q" title="Q 炸弹">Q</span>
+            <span class="skill-cell" id="skill-e" title="E 护盾">E</span>
+            <span class="skill-cell" id="skill-r" title="R 连射">R</span>
+          </div>
+        </div>
+        <div class="hud-panel hud-items-panel">
+          <span class="hud-tag">ITEMS</span>
+          <span class="item-cell" title="X 导弹"><em>X</em><span id="missile-count">0</span></span>
+          <span class="item-cell" title="N 核弹"><em>N</em><span id="nuke-count">0</span></span>
+        </div>
+        <span id="combo-display" class="combo-display"></span>
+      </div>
+
+      <div id="screen-start">
+        <div id="first-time-hint" class="first-time-hint hidden">
+          <p>首次游玩：<kbd>SPACE</kbd> 开始/停止射击，<kbd>WASD</kbd> 移动</p>
+          <button type="button" id="btn-got-it" class="btn-small">知道了</button>
+        </div>
+        <div class="title-frame">
+          <h1>天穹</h1>
+          <p class="subtitle">SKY STRIKE</p>
+        </div>
+        <div class="start-options">
+          <div class="option-row">
+            <span class="option-label">难度</span>
+            <span class="option-btns" id="difficulty-btns">
+              <button type="button" class="opt-btn active" data-diff="0">简单</button>
+              <button type="button" class="opt-btn" data-diff="1">普通</button>
+              <button type="button" class="opt-btn" data-diff="2">困难</button>
+            </span>
+          </div>
+          <div class="option-row" id="ship-select-row">
+            <span class="option-label">机体</span>
+            <span class="option-btns" id="ship-btns">
+              <button type="button" class="opt-btn active" data-ship="A">A 型</button>
+              <button type="button" class="opt-btn" data-ship="B">B 型</button>
+            </span>
+          </div>
+        </div>
+        <div class="ctrl-list">
+          <p><kbd>SPACE</kbd> 射击 <kbd>Q</kbd>炸弹 <kbd>E</kbd>护盾 <kbd>R</kbd>连射 <kbd>X</kbd>导弹 <kbd>N</kbd>核弹</p>
+        </div>
+        <button id="btn-start" class="btn-primary">START</button>
+      </div>
+
+      <div id="screen-pause" class="hidden">
+        <p class="pause-title">暂停</p>
+        <p class="pause-score">SCORE <span id="pause-score">0</span> · BEST <span id="pause-best">0</span></p>
+        <p class="hint">按 P 继续</p>
+      </div>
+
+      <div id="screen-gameover" class="hidden">
+        <div class="title-frame">
+          <h2>MISSION FAILED</h2>
+          <p id="final-score" class="final-score">SCORE 0000000</p>
+          <p id="new-record-msg" class="new-record-msg hidden">NEW RECORD!</p>
+          <div id="achievements-panel" class="achievements-panel"></div>
+        </div>
+        <div class="gameover-btns">
+          <button id="btn-continue" class="btn-primary btn-continue hidden">续关 (1)</button>
+          <button id="btn-restart" class="btn-primary">再开一局</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
