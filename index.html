@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>天穹 · 飞机大战</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +13,14 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="game-canvas" width="800" height="600"></canvas>
+    <div class="game-area">
+      <canvas id="game-canvas" width="800" height="600"></canvas>
+      <div id="touch-controls" class="touch-controls" aria-hidden="true">
+        <div id="touch-move" class="touch-zone touch-move"></div>
+        <button type="button" id="touch-fire" class="touch-btn touch-fire">射击</button>
+        <button type="button" id="touch-pause" class="touch-btn touch-pause" title="暂停">‖</button>
+      </div>
+    </div>
 
     <div id="ui-overlay">
       <div id="hud-frame">
@@ -56,7 +65,7 @@
 
       <div id="screen-start">
         <div id="first-time-hint" class="first-time-hint hidden">
-          <p>首次游玩：<kbd>SPACE</kbd> 开始/停止射击，<kbd>WASD</kbd> 移动</p>
+          <p id="first-time-text">首次游玩：<kbd>SPACE</kbd> 开始/停止射击，<kbd>WASD</kbd> 移动</p>
           <button type="button" id="btn-got-it" class="btn-small">知道了</button>
         </div>
         <div class="title-frame">
@@ -89,7 +98,7 @@
       <div id="screen-pause" class="hidden">
         <p class="pause-title">暂停</p>
         <p class="pause-score">SCORE <span id="pause-score">0</span> · BEST <span id="pause-best">0</span></p>
-        <p class="hint">按 P 继续</p>
+        <p class="hint">按 P 继续 <span class="mobile-only">或点击画面</span></p>
       </div>
 
       <div id="screen-gameover" class="hidden">

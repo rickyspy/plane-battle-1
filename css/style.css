@@ -38,17 +38,121 @@ body {
 
 #app {
   position: relative;
+  width: 100%;
+  max-width: 800px;
+  max-height: 100vh;
+  margin: 0 auto;
   border-radius: 0;
   box-shadow: var(--shadow), 0 0 0 3px var(--hud-border), inset 0 0 60px rgba(61, 122, 92, 0.06);
   overflow: hidden;
   background: var(--bg-canvas);
+  touch-action: none;
+}
+
+.game-area {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 800 / 600;
+  max-height: 100vh;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
 #game-canvas {
   display: block;
-  width: 800px;
-  height: 600px;
+  width: 100%;
+  height: 100%;
+  max-width: 800px;
+  max-height: 600px;
+  margin: 0 auto;
   background: var(--bg-canvas);
+  object-fit: contain;
+}
+
+@media (min-width: 801px) {
+  .game-area { max-width: 800px; }
+  #game-canvas { width: 800px; height: 600px; max-width: none; max-height: none; }
+}
+
+/* ----- 触摸操控（移动端显示） ----- */
+.touch-controls {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.touch-controls > * {
+  pointer-events: auto;
+}
+
+.touch-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 45%;
+  height: 100%;
+  cursor: none;
+}
+
+.touch-btn {
+  position: absolute;
+  border: 2px solid var(--accent);
+  background: rgba(0, 30, 18, 0.85);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px 24px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.touch-btn:active {
+  background: rgba(93, 232, 138, 0.25);
+  box-shadow: 0 0 20px rgba(93, 232, 138, 0.4);
+}
+
+.touch-fire {
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 72px;
+  min-height: 52px;
+}
+
+.touch-pause {
+  right: 12px;
+  top: 12px;
+  padding: 8px 14px;
+  font-size: 18px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.mobile-only { display: none; }
+
+@media (pointer: coarse), (hover: none) {
+  .touch-controls { display: block; }
+  .mobile-only { display: inline; }
+}
+
+@media (max-width: 480px) {
+  #hud-frame {
+    padding: 4px 8px 6px;
+    gap: 4px 10px;
+  }
+  .hud-panel { padding: 3px 6px; gap: 4px; }
+  .hud-tag { font-size: 9px; }
+  .hud-num { font-size: 13px; }
+  .skill-cell { min-width: 30px; font-size: 8px; padding: 2px 4px; }
+  .touch-fire { right: 8px; min-width: 64px; min-height: 48px; font-size: 13px; }
+  .touch-pause { right: 8px; top: 8px; min-width: 40px; min-height: 40px; }
 }
 
 /* ----- 雷电风格 HUD 框体 ----- */
@@ -56,6 +160,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 10;
 }
 
 #ui-overlay .pointer-events {

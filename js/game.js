@@ -70,6 +70,7 @@
   let hasBeenHitThisRun = false;
   let hasKilledEnemyThisRun = false;
   let hasKilledBossThisRun = false;
+  var touchMoveTarget = null;
   var HIGH_SCORE_KEY = 'plane_battle_high_score';
   var ACH_KEYS = { first_blood: 'plane_battle_ach_first_blood', boss: 'plane_battle_ach_boss', score50k: 'plane_battle_ach_50k', close10: 'plane_battle_ach_close10', nodamage1: 'plane_battle_ach_nodamage1' };
   var SHIP_B_KEY = 'plane_battle_ship_b_unlocked';
@@ -81,6 +82,13 @@
   function setHighScore(v) { localStorage.setItem(HIGH_SCORE_KEY, String(v)); }
   function addShake(amt) { shakeAmount = Math.min(shakeAmount + amt, 20); }
   function addFloatingText(x, y, text, duration) { floatingTexts.push({ x: x, y: y, text: text, life: duration, maxLife: duration }); }
+  function clientToCanvas(clientX, clientY) {
+    var r = canvas.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) * (CW / r.width),
+      y: (clientY - r.top) * (CH / r.height)
+    };
+  }
   const AUDIO = window.GAME_AUDIO;
 
   const $score = document.getElementById('score');
@@ -162,6 +170,7 @@
   }
 
   function showGameOver(now) {
+    touchMoveTarget = null;
     if (closeCallCountThisRun >= 10 && !localStorage.getItem(ACH_KEYS.close10)) localStorage.setItem(ACH_KEYS.close10, '1');
     if (score >= MILESTONE_SCORE && !localStorage.getItem(ACH_KEYS.score50k)) localStorage.setItem(ACH_KEYS.score50k, '1');
     state = 'gameover';
@@ -254,9 +263,16 @@
       AUDIO.playExplosion();
     }
 
-    player.vx = (keys['ArrowRight'] || keys['KeyD'] ? 1 : 0) - (keys['ArrowLeft'] || keys['KeyA'] ? 1 : 0);
-    player.vy = (keys['ArrowDown'] || keys['KeyS'] ? 1 : 0) - (keys['ArrowUp'] || keys['KeyW'] ? 1 : 0);
-    player.update(now, bounds);
+    if (touchMoveTarget !== null) {
+      var tx = touchMoveTarget.x - player.w / 2;
+      var ty = touchMoveTarget.y - player.h / 2;
+      player.x = Math.max(0, Math.min(bounds.w - player.w, tx));
+      player.y = Math.max(0, Math.min(bounds.h - player.h, ty));
+    } else {
+      player.vx = (keys['ArrowRight'] || keys['KeyD'] ? 1 : 0) - (keys['ArrowLeft'] || keys['KeyA'] ? 1 : 0);
+      player.vy = (keys['ArrowDown'] || keys['KeyS'] ? 1 : 0) - (keys['ArrowUp'] || keys['KeyW'] ? 1 : 0);
+      player.update(now, bounds);
+    }
 
     if (autoFire) {
       const list = player.fire(now);
@@ -1107,6 +1123,7 @@
   var $shipSelectRow = document.getElementById('ship-select-row');
 
   $btnStart.addEventListener('click', () => {
+    touchMoveTarget = null;
     var diffEl = $diffBtns && $diffBtns.querySelector('.opt-btn.active');
     if (diffEl) difficulty = parseInt(diffEl.dataset.diff || '1', 10);
     var shipEl = $shipBtns && $shipBtns.querySelector('.opt-btn.active');
@@ -1134,6 +1151,7 @@
   }
 
   $btnRestart.addEventListener('click', () => {
+    touchMoveTarget = null;
     resetGame();
     state = 'playing';
     $screenStart.classList.add('hidden');
@@ -1173,6 +1191,73 @@
       if ($firstHint) $firstHint.classList.add('hidden');
     });
   }
+
+  var isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (isTouchDevice) {
+    var firstTimeText = document.getElementById('first-time-text');
+    if (firstTimeText) firstTimeText.innerHTML = '首次游玩：<strong>左侧滑动</strong>移动，<strong>右侧按钮</strong>射击';
+  }
+
+  var $touchMove = document.getElementById('touch-move');
+  var $touchFire = document.getElementById('touch-fire');
+  var $touchPause = document.getElementById('touch-pause');
+
+  function preventTouch(e) {
+    if (state === 'playing') e.preventDefault();
+  }
+  canvas.addEventListener('touchstart', preventTouch, { passive: false });
+  canvas.addEventListener('touchmove', preventTouch, { passive: false });
+
+  if ($touchMove) {
+    $touchMove.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      touchMoveTarget = clientToCanvas(e.clientX, e.clientY);
+      $touchMove.setPointerCapture(e.pointerId);
+    });
+    $touchMove.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch' || e.buttons !== 0) touchMoveTarget = clientToCanvas(e.clientX, e.clientY);
+    });
+    $touchMove.addEventListener('pointerup', function (e) {
+      $touchMove.releasePointerCapture(e.pointerId);
+      touchMoveTarget = null;
+    });
+    $touchMove.addEventListener('pointercancel', function () { touchMoveTarget = null; });
+  }
+
+  if ($touchFire) {
+    $touchFire.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      autoFire = true;
+    });
+    $touchFire.addEventListener('pointerup', function (e) {
+      e.preventDefault();
+      autoFire = false;
+    });
+    $touchFire.addEventListener('pointerleave', function () { autoFire = false; });
+  }
+
+  if ($touchPause) {
+    $touchPause.addEventListener('click', function () {
+      if (state === 'playing') {
+        state = 'pause';
+        var ps = document.getElementById('pause-score');
+        var pb = document.getElementById('pause-best');
+        if (ps) ps.textContent = String(score).padStart(7, '0');
+        if (pb) pb.textContent = String(highScore).padStart(7, '0');
+        $screenPause.classList.remove('hidden');
+      } else if (state === 'pause') {
+        state = 'playing';
+        $screenPause.classList.add('hidden');
+      }
+    });
+  }
+
+  $screenPause.addEventListener('click', function (e) {
+    if (state === 'pause' && e.target === $screenPause) {
+      state = 'playing';
+      $screenPause.classList.add('hidden');
+    }
+  });
 
   resetGame();
   requestAnimationFrame(gameLoop);
