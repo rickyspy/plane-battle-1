@@ -5,6 +5,7 @@ window.GAME_AUDIO = (function () {
   let ctx = null;
   let bgmGain = null;
   let bgmInterval = null;
+  let muted = false;
 
   function getCtx() {
     if (!ctx) {
@@ -50,28 +51,43 @@ window.GAME_AUDIO = (function () {
     src.stop(now + (opt.dur ?? 0.12));
   }
 
+  function guard(fn) {
+    return function () { if (!muted) fn.apply(null, arguments); };
+  }
+
   return {
-    playShoot() {
+    setMuted(v) { muted = !!v; },
+    playShoot: guard(function () {
       playTone({ freq: 880, freqEnd: 600, dur: 0.05, vol: 0.08, type: 'square' });
-    },
-    playExplosion() {
+    }),
+    playExplosion: guard(function () {
       playNoise({ dur: 0.15, vol: 0.18 });
       playTone({ freq: 180, freqEnd: 80, dur: 0.12, vol: 0.1, type: 'sawtooth' });
-    },
-    playPlayerHit() {
+    }),
+    playCombo: guard(function () {
+      playTone({ freq: 880, dur: 0.04, vol: 0.06 });
+      playTone({ freq: 1100, dur: 0.05, vol: 0.05 });
+    }),
+    playBossKill: guard(function () {
+      playNoise({ dur: 0.2, vol: 0.2 });
+      playTone({ freq: 220, freqEnd: 80, dur: 0.2, vol: 0.12, type: 'sawtooth' });
+      playTone({ freq: 440, dur: 0.08, vol: 0.08 });
+    }),
+    playPlayerHit: guard(function () {
       playTone({ freq: 200, dur: 0.2, vol: 0.2, type: 'sawtooth' });
       playNoise({ dur: 0.1, vol: 0.15 });
-    },
-    playPowerUp() {
+    }),
+    playPowerUp: guard(function () {
       playTone({ freq: 523, dur: 0.06, vol: 0.12 });
       playTone({ freq: 659, dur: 0.06, vol: 0.1 });
       playTone({ freq: 784, dur: 0.12, vol: 0.1 });
-    },
-    playGameOver() {
+    }),
+    playGameOver: guard(function () {
       playTone({ freq: 400, freqEnd: 200, dur: 0.4, vol: 0.15, type: 'sawtooth' });
       playNoise({ dur: 0.25, vol: 0.12 });
-    },
+    }),
     startBGM() {
+      if (muted) return;
       const audioCtx = getCtx();
       if (bgmInterval) return;
       const seq = [

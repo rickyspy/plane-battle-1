@@ -71,6 +71,11 @@
   let hasKilledEnemyThisRun = false;
   let hasKilledBossThisRun = false;
   var touchMoveTarget = null;
+  var touchMoveSmoothed = null;
+  var stageTitleUntil = 0;
+  var stageTitleLevel = 1;
+  var lowQuality = false;
+  var SETTINGS_KEYS = { difficulty: 'plane_battle_diff', shipType: 'plane_battle_ship', mute: 'plane_battle_mute', lowQuality: 'plane_battle_lowq' };
   var HIGH_SCORE_KEY = 'plane_battle_high_score';
   var ACH_KEYS = { first_blood: 'plane_battle_ach_first_blood', boss: 'plane_battle_ach_boss', score50k: 'plane_battle_ach_50k', close10: 'plane_battle_ach_close10', nodamage1: 'plane_battle_ach_nodamage1' };
   var SHIP_B_KEY = 'plane_battle_ship_b_unlocked';
@@ -167,10 +172,17 @@
     if (q) { var l = player.lastBomb || 0; var left = l ? Math.max(0, 15 - (now - l) / 1000) : 0; q.textContent = left > 0 ? Math.ceil(left).toString() : 'Q'; q.classList.toggle('ready', left <= 0); }
     if (e) { l = player.lastShield || 0; left = l ? Math.max(0, 10 - (now - l) / 1000) : 0; e.textContent = left > 0 ? Math.ceil(left).toString() : 'E'; e.classList.toggle('ready', left <= 0); }
     if (r) { l = player.lastRapid || 0; left = l ? Math.max(0, 8 - (now - l) / 1000) : 0; r.textContent = left > 0 ? Math.ceil(left).toString() : 'R'; r.classList.toggle('ready', left <= 0); }
+    var tq = document.getElementById('touch-q');
+    var te = document.getElementById('touch-e');
+    var tr = document.getElementById('touch-r');
+    if (tq) { l = player.lastBomb || 0; left = l ? Math.max(0, 15 - (now - l) / 1000) : 0; tq.classList.toggle('ready', left <= 0); }
+    if (te) { l = player.lastShield || 0; left = l ? Math.max(0, 10 - (now - l) / 1000) : 0; te.classList.toggle('ready', left <= 0); }
+    if (tr) { l = player.lastRapid || 0; left = l ? Math.max(0, 8 - (now - l) / 1000) : 0; tr.classList.toggle('ready', left <= 0); }
   }
 
   function showGameOver(now) {
     touchMoveTarget = null;
+    touchMoveSmoothed = null;
     if (closeCallCountThisRun >= 10 && !localStorage.getItem(ACH_KEYS.close10)) localStorage.setItem(ACH_KEYS.close10, '1');
     if (score >= MILESTONE_SCORE && !localStorage.getItem(ACH_KEYS.score50k)) localStorage.setItem(ACH_KEYS.score50k, '1');
     state = 'gameover';
@@ -210,7 +222,8 @@
   }
 
   function addParticle(x, y, color) {
-    for (let i = 0; i < 8; i++) {
+    var n = lowQuality ? 3 : 8;
+    for (let i = 0; i < n; i++) {
       particles.push({
         x,
         y,
@@ -264,11 +277,20 @@
     }
 
     if (touchMoveTarget !== null) {
-      var tx = touchMoveTarget.x - player.w / 2;
-      var ty = touchMoveTarget.y - player.h / 2;
-      player.x = Math.max(0, Math.min(bounds.w - player.w, tx));
-      player.y = Math.max(0, Math.min(bounds.h - player.h, ty));
+      var deadzone = 18;
+      var dx = touchMoveTarget.x - (player.x + player.w / 2);
+      var dy = touchMoveTarget.y - (player.y + player.h / 2);
+      if (Math.abs(dx) < deadzone && Math.abs(dy) < deadzone) { /* 死区 */ } else {
+        if (touchMoveSmoothed === null) touchMoveSmoothed = { x: player.x + player.w / 2, y: player.y + player.h / 2 };
+        touchMoveSmoothed.x += (touchMoveTarget.x - touchMoveSmoothed.x) * 0.18;
+        touchMoveSmoothed.y += (touchMoveTarget.y - touchMoveSmoothed.y) * 0.18;
+        var tx = touchMoveSmoothed.x - player.w / 2;
+        var ty = touchMoveSmoothed.y - player.h / 2;
+        player.x = Math.max(0, Math.min(bounds.w - player.w, tx));
+        player.y = Math.max(0, Math.min(bounds.h - player.h, ty));
+      }
     } else {
+      touchMoveSmoothed = null;
       player.vx = (keys['ArrowRight'] || keys['KeyD'] ? 1 : 0) - (keys['ArrowLeft'] || keys['KeyA'] ? 1 : 0);
       player.vy = (keys['ArrowDown'] || keys['KeyS'] ? 1 : 0) - (keys['ArrowUp'] || keys['KeyW'] ? 1 : 0);
       player.update(now, bounds);
@@ -422,9 +444,11 @@
     for (var i = powerUps.length - 1; i >= 0; i--) {
       var p = powerUps[i];
       if (!aabb(playerBox, { x: p.x, y: p.y, w: p.w, h: p.h })) continue;
-      if (p.type === 'P') player.addWeaponLevel();
-      else if (p.type === 'M') player.missileCount += 3;
-      else if (p.type === 'N') player.nukeCount += 1;
+      var cx = p.x + p.w / 2;
+      var cy = p.y + p.h / 2;
+      if (p.type === 'P') { player.addWeaponLevel(); addFloatingText(cx, cy - 20, '+POWER', 1200); }
+      else if (p.type === 'M') { player.missileCount += 3; addFloatingText(cx, cy - 20, '+MISSILE', 1200); }
+      else if (p.type === 'N') { player.nukeCount += 1; addFloatingText(cx, cy - 20, '+NUKE', 1200); }
       AUDIO.playPowerUp();
       powerUps.splice(i, 1);
     }
@@ -457,12 +481,14 @@
           flashColor = 'rgba(255,255,255,';
           hitStopFrames = 5;
           addParticle(boss.x + boss.w / 2, boss.y + boss.h / 2, boss.color);
-          for (var k = 0; k < 25; k++) addParticle(boss.x + boss.w / 2, boss.y + boss.h / 2, '#e85d5d');
+          for (var k = 0; k < (lowQuality ? 10 : 25); k++) addParticle(boss.x + boss.w / 2, boss.y + boss.h / 2, '#e85d5d');
           if (Math.random() < 0.4) powerUps.push(ENTITIES.createPowerUp(boss.x + boss.w / 2 - 12, boss.y + boss.h / 2 - 12, 'N'));
-          AUDIO.playExplosion();
+          AUDIO.playBossKill();
           boss = null;
           level++;
           killsThisLevel = 0;
+          stageTitleLevel = level;
+          stageTitleUntil = now + 2000;
         }
         continue;
       }
@@ -475,6 +501,7 @@
           if (!hasKilledEnemyThisRun) { hasKilledEnemyThisRun = true; if (!localStorage.getItem(ACH_KEYS.first_blood)) localStorage.setItem(ACH_KEYS.first_blood, '1'); }
           comboCount++;
           comboTimeout = now + 2500;
+          if (comboCount >= 5) AUDIO.playCombo();
           var mult = 1 + Math.min(Math.floor(comboCount / 5), 4);
           score += e.score * mult;
           killsThisLevel++;
@@ -877,6 +904,9 @@
     ctx.font = '11px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
     ctx.fillText(boss.phase2 ? 'BOSS PHASE 2' : 'BOSS', CW / 2, barY + 8);
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText(Math.max(0, Math.ceil(boss.hp)) + ' / ' + boss.maxHp, CW / 2, barY + 22);
   }
 
   /** 按 shape 绘制多种子弹形态 */
@@ -894,6 +924,9 @@
       ctx.beginPath();
       ctx.ellipse(x, y, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.shadowBlur = 0;
       ctx.restore();
       return;
@@ -1010,6 +1043,23 @@
       ctx.restore();
     }
 
+    if (state === 'playing' && stageTitleUntil > 0 && now < stageTitleUntil) {
+      ctx.save();
+      var a = 1 - (stageTitleUntil - now) / 1000;
+      if (a > 0.8) a = (stageTitleUntil - now) / 200;
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.fillStyle = '#5de88a';
+      ctx.font = 'bold 42px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(93, 232, 138, 0.8)';
+      ctx.shadowBlur = 20;
+      ctx.fillText('STAGE ' + stageTitleLevel, CW / 2, CH / 2);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
     if (state !== 'playing' && state !== 'gameover') return;
 
     const invuln = player.isInvuln(now);
@@ -1122,15 +1172,35 @@
   var $btnGotIt = document.getElementById('btn-got-it');
   var $shipSelectRow = document.getElementById('ship-select-row');
 
+  function applySettings() {
+    if (AUDIO.setMuted) AUDIO.setMuted(!!localStorage.getItem(SETTINGS_KEYS.mute));
+    var diff = localStorage.getItem(SETTINGS_KEYS.difficulty);
+    if (diff != null) difficulty = parseInt(diff, 10);
+    var ship = localStorage.getItem(SETTINGS_KEYS.shipType);
+    if (ship) shipType = ship;
+    lowQuality = !!localStorage.getItem(SETTINGS_KEYS.lowQuality);
+    var diffEl = $diffBtns && $diffBtns.querySelector('[data-diff="' + difficulty + '"]');
+    if (diffEl) { $diffBtns.querySelectorAll('.opt-btn').forEach(function (b) { b.classList.remove('active'); }); diffEl.classList.add('active'); }
+    var shipEl = $shipBtns && $shipBtns.querySelector('[data-ship="' + shipType + '"]');
+    if (shipEl && !shipEl.disabled) { $shipBtns.querySelectorAll('.opt-btn').forEach(function (b) { b.classList.remove('active'); }); shipEl.classList.add('active'); }
+    var soundCheck = document.getElementById('sound-checkbox');
+    if (soundCheck) soundCheck.checked = !localStorage.getItem(SETTINGS_KEYS.mute);
+    var lowqCheck = document.getElementById('lowq-checkbox');
+    if (lowqCheck) lowqCheck.checked = lowQuality;
+  }
+
   $btnStart.addEventListener('click', () => {
     touchMoveTarget = null;
+    touchMoveSmoothed = null;
     var diffEl = $diffBtns && $diffBtns.querySelector('.opt-btn.active');
-    if (diffEl) difficulty = parseInt(diffEl.dataset.diff || '1', 10);
+    if (diffEl) { difficulty = parseInt(diffEl.dataset.diff || '1', 10); localStorage.setItem(SETTINGS_KEYS.difficulty, String(difficulty)); }
     var shipEl = $shipBtns && $shipBtns.querySelector('.opt-btn.active');
-    if (shipEl && shipEl.dataset.ship) shipType = shipEl.dataset.ship;
+    if (shipEl && shipEl.dataset.ship) { shipType = shipEl.dataset.ship; localStorage.setItem(SETTINGS_KEYS.shipType, shipType); }
     AUDIO.resume();
     resetGame();
     state = 'playing';
+    stageTitleLevel = 1;
+    stageTitleUntil = performance.now() + 1800;
     $screenStart.classList.add('hidden');
     $screenPause.classList.add('hidden');
     $screenGameover.classList.add('hidden');
@@ -1152,8 +1222,11 @@
 
   $btnRestart.addEventListener('click', () => {
     touchMoveTarget = null;
+    touchMoveSmoothed = null;
     resetGame();
     state = 'playing';
+    stageTitleLevel = 1;
+    stageTitleUntil = performance.now() + 1800;
     $screenStart.classList.add('hidden');
     $screenPause.classList.add('hidden');
     $screenGameover.classList.add('hidden');
@@ -1224,18 +1297,6 @@
     $touchMove.addEventListener('pointercancel', function () { touchMoveTarget = null; });
   }
 
-  if ($touchFire) {
-    $touchFire.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      autoFire = true;
-    });
-    $touchFire.addEventListener('pointerup', function (e) {
-      e.preventDefault();
-      autoFire = false;
-    });
-    $touchFire.addEventListener('pointerleave', function () { autoFire = false; });
-  }
-
   if ($touchPause) {
     $touchPause.addEventListener('click', function () {
       if (state === 'playing') {
@@ -1258,6 +1319,88 @@
       $screenPause.classList.add('hidden');
     }
   });
+
+  var $btnPauseResume = document.getElementById('btn-pause-resume');
+  var $btnPauseTitle = document.getElementById('btn-pause-title');
+  if ($btnPauseResume) {
+    $btnPauseResume.addEventListener('click', function (e) {
+      e.stopPropagation();
+      state = 'playing';
+      $screenPause.classList.add('hidden');
+    });
+  }
+  if ($btnPauseTitle) {
+    $btnPauseTitle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      state = 'start';
+      $screenPause.classList.add('hidden');
+      $screenGameover.classList.add('hidden');
+      $screenStart.classList.remove('hidden');
+      AUDIO.stopBGM();
+    });
+  }
+
+  var soundCheck = document.getElementById('sound-checkbox');
+  if (soundCheck) {
+    soundCheck.addEventListener('change', function () {
+      if (this.checked) localStorage.removeItem(SETTINGS_KEYS.mute);
+      else localStorage.setItem(SETTINGS_KEYS.mute, '1');
+      if (AUDIO.setMuted) AUDIO.setMuted(!this.checked);
+    });
+  }
+  var lowqCheck = document.getElementById('lowq-checkbox');
+  if (lowqCheck) {
+    lowqCheck.addEventListener('change', function () {
+      lowQuality = this.checked;
+      if (this.checked) localStorage.setItem(SETTINGS_KEYS.lowQuality, '1');
+      else localStorage.removeItem(SETTINGS_KEYS.lowQuality);
+    });
+  }
+
+  applySettings();
+
+  ['touch-q', 'touch-e', 'touch-r', 'touch-x', 'touch-n'].forEach(function (id, idx) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (state !== 'playing') return;
+      if (id === 'touch-q') pendingBomb = true;
+      else if (id === 'touch-e') pendingShield = true;
+      else if (id === 'touch-r') pendingRapid = true;
+      else if (id === 'touch-x') pendingMissile = true;
+      else if (id === 'touch-n') pendingNuke = true;
+      if (navigator.vibrate) navigator.vibrate(10);
+    });
+  });
+
+  var firePointerId = null;
+  var fireDelayTimer = null;
+  if ($touchFire) {
+    $touchFire.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (firePointerId != null) return;
+      firePointerId = e.pointerId;
+      $touchFire.setPointerCapture(e.pointerId);
+      fireDelayTimer = setTimeout(function () { autoFire = true; }, 80);
+    });
+    $touchFire.addEventListener('pointerup', function (e) {
+      e.preventDefault();
+      if (e.pointerId === firePointerId) {
+        firePointerId = null;
+        if (fireDelayTimer) { clearTimeout(fireDelayTimer); fireDelayTimer = null; }
+        autoFire = false;
+      }
+    });
+    $touchFire.addEventListener('pointercancel', function (e) {
+      if (e.pointerId === firePointerId) {
+        firePointerId = null;
+        if (fireDelayTimer) { clearTimeout(fireDelayTimer); fireDelayTimer = null; }
+        autoFire = false;
+      }
+    });
+    $touchFire.addEventListener('pointerleave', function () { autoFire = false; });
+  }
 
   resetGame();
   requestAnimationFrame(gameLoop);

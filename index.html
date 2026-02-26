@@ -15,10 +15,18 @@
   <div id="app">
     <div class="game-area">
       <canvas id="game-canvas" width="800" height="600"></canvas>
+      <p class="rotate-hint" aria-hidden="true">建议横屏游玩</p>
       <div id="touch-controls" class="touch-controls" aria-hidden="true">
         <div id="touch-move" class="touch-zone touch-move"></div>
         <button type="button" id="touch-fire" class="touch-btn touch-fire">射击</button>
         <button type="button" id="touch-pause" class="touch-btn touch-pause" title="暂停">‖</button>
+        <div class="touch-skill-row">
+          <button type="button" class="touch-skill" id="touch-q" title="炸弹">Q</button>
+          <button type="button" class="touch-skill" id="touch-e" title="护盾">E</button>
+          <button type="button" class="touch-skill" id="touch-r" title="连射">R</button>
+          <button type="button" class="touch-skill" id="touch-x" title="导弹">X</button>
+          <button type="button" class="touch-skill" id="touch-n" title="核弹">N</button>
+        </div>
       </div>
     </div>
 
@@ -92,13 +100,24 @@
         <div class="ctrl-list">
           <p><kbd>SPACE</kbd> 射击 <kbd>Q</kbd>炸弹 <kbd>E</kbd>护盾 <kbd>R</kbd>连射 <kbd>X</kbd>导弹 <kbd>N</kbd>核弹</p>
         </div>
-        <button id="btn-start" class="btn-primary">START</button>
+        <p class="mobile-fullscreen-hint mobile-only">横屏 · 全屏体验更佳</p>
+        <div class="start-row">
+          <div class="start-options-row mobile-only">
+            <label class="sound-toggle"><input type="checkbox" id="sound-checkbox" checked> 音效</label>
+            <label class="sound-toggle"><input type="checkbox" id="lowq-checkbox"> 低特效</label>
+          </div>
+          <button id="btn-start" class="btn-primary">START</button>
+        </div>
       </div>
 
       <div id="screen-pause" class="hidden">
         <p class="pause-title">暂停</p>
         <p class="pause-score">SCORE <span id="pause-score">0</span> · BEST <span id="pause-best">0</span></p>
         <p class="hint">按 P 继续 <span class="mobile-only">或点击画面</span></p>
+        <div class="pause-btns">
+          <button type="button" id="btn-pause-resume" class="btn-primary">继续</button>
+          <button type="button" id="btn-pause-title" class="btn-secondary">返回标题</button>
+        </div>
       </div>
 
       <div id="screen-gameover" class="hidden">
